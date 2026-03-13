@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026年春季课程表</title>
+  
+  <!-- Tailwind CSS 引擎 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React 核心运行库 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel 浏览器端实时编译 -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* 保证纵向排版文字居中 */
+    .writing-vertical-lr { writing-mode: vertical-lr; }
+    body { background-color: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    // --- 内联 SVG 图标替代外部依赖库 ---
+    const IconCalendar = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>;
+    const IconChevronLeft = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
+    const IconChevronRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>;
+    const IconUser = ({className}) => <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+    const IconMapPin = ({className}) => <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+
+    // 底层课程数据
+    const scheduleData = [
+      { id: 1, name: "文献检索及论文写作I", teacher: "周向阳", location: "(白)教学楼②407", day: 1, start: 1, end: 3, weeks: [4, 6] },
+      { id: 2, name: "文献检索及论文写作I", teacher: "周向阳", location: "(白)教学楼②407", day: 1, start: 1, end: 2, weeks: [7, 8] },
+      { id: 3, name: "岭南建筑文化", teacher: "魏衡, 黄迎", location: "教学楼②215(实211)", day: 1, start: 3, end: 4, weeks: [2, 3] },
+      { id: 4, name: "人工智能概论", teacher: "柳雨新、刘同来", location: "(白)教学楼②703", day: 1, start: 6, end: 8, weeks: [2, 3, 4, 6] },
+      { id: 5, name: "人工智能概论", teacher: "柳雨新、刘同来", location: "(白)教学楼②703", day: 1, start: 6, end: 7, weeks: [7, 8] },
+      { id: 6, name: "人工智能技术", teacher: "杨智诚", location: "教学楼②215(实211)", day: 1, start: 6, end: 8, weeks: [9, 10, 11, 12, 13] },
+      { id: 7, name: "工程热力学理论及应用", teacher: "陈姝", location: "教学楼①206", day: 1, start: 8, end: 9, weeks: [15, 16] },
+      { id: 8, name: "工程热力学理论及应用", teacher: "陈姝", location: "教学楼①206", day: 1, start: 10, end: 12, weeks: [2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
+      { id: 9, name: "文献检索及论文写作I", teacher: "周向阳", location: "(白)教学楼②210", day: 2, start: 1, end: 3, weeks: [2, 3] },
+      { id: 10, name: "绿色建筑及建筑节能技术", teacher: "程晔, 于磊", location: "教学楼②202", day: 2, start: 3, end: 4, weeks: [4, 5, 6, 7, 8, 9, 10] },
+      { id: 11, name: "研究生心理健康教育", teacher: "王凯欣", location: "(白)教学楼②704", day: 2, start: 6, end: 8, weeks: [10, 11, 12, 13] },
+      { id: 12, name: "研究生心理健康教育", teacher: "王凯欣", location: "(白)教学楼②704", day: 2, start: 6, end: 7, weeks: [14, 15] },
+      { id: 13, name: "工程地质与水文地质学", teacher: "温勇", location: "教学楼②215(实211)", day: 2, start: 6, end: 8, weeks: [2, 3, 4, 5, 6, 7] },
+      { id: 14, name: "工程地质与水文地质学", teacher: "温勇", location: "教学楼②215(实211)", day: 2, start: 6, end: 7, weeks: [8] },
+      { id: 15, name: "人工智能技术", teacher: "杨智诚", location: "教学楼②215(实211)", day: 2, start: 8, end: 9, weeks: [8] },
+      { id: 16, name: "工程地质与水文地质学", teacher: "温勇", location: "教学楼②215(实211)", day: 3, start: 3, end: 4, weeks: [10, 11, 12, 13, 14, 15] },
+      { id: 17, name: "职业生涯规划", teacher: "李筱曼", location: "(白)教学楼②609", day: 3, start: 6, end: 8, weeks: [3, 4, 5, 6] },
+      { id: 18, name: "职业生涯规划", teacher: "李筱曼", location: "(白)教学楼②609", day: 3, start: 6, end: 7, weeks: [7, 8] },
+      { id: 19, name: "绿色建筑及建筑节能技术", teacher: "程晔, 于磊", location: "教学楼②608", day: 4, start: 3, end: 4, weeks: [2, 3, 4, 5, 6, 7, 8] },
+      { id: 20, name: "绿色建筑及建筑节能技术", teacher: "程晔, 于磊", location: "教学楼②202", day: 4, start: 8, end: 9, weeks: [9, 10] },
+      { id: 21, name: "岭南建筑文化", teacher: "魏衡, 黄迎", location: "教学楼②215(实211)", day: 4, start: 10, end: 12, weeks: [2, 3, 4] },
+      { id: 22, name: "岭南建筑文化", teacher: "魏衡, 黄迎", location: "校内实验 教学楼②215", day: 5, start: 1, end: 3, weeks: [2] },
+      { id: 23, name: "岭南建筑文化", teacher: "魏衡, 黄迎", location: "校内实验 教学楼②215", day: 5, start: 1, end: 4, weeks: [3, 4] },
+      { id: 24, name: "人工智能技术", teacher: "杨智诚", location: "教学楼②215(实211)", day: 5, start: 2, end: 4, weeks: [9, 10, 11, 12, 13] },
+      { id: 25, name: "岭南建筑文化", teacher: "魏衡, 黄迎", location: "校外实验课", day: 6, start: 1, end: 9, weeks: [3] },
+      { id: 26, name: "智能检测与绿色运维", teacher: "左太辉", location: "教学楼②204", day: 5, start: 6, end: 7, weeks: [12, 14, 15, 17] },
+      { id: 27, name: "智能检测与绿色运维", teacher: "左太辉", location: "教学楼②204", day: 5, start: 8, end: 9, weeks: [12, 14, 15, 17] },
+      { id: 28, name: "深度学习与智慧感知", teacher: "郭建军", location: "教学楼①201", day: 6, start: 1, end: 2, weeks: [13, 14, 15, 16] },
+      { id: 29, name: "深度学习与智慧感知", teacher: "郭建军", location: "教学楼①201", day: 6, start: 3, end: 4, weeks: [13, 14, 15] },
+      { id: 30, name: "深度学习与智慧感知", teacher: "杨智诚", location: "教学楼①201", day: 5, start: 11, end: 12, weeks: [16] },
+      { id: 31, name: "智能建造与运维导论", teacher: "未标注", location: "教学楼②301", day: 1, start: 1, end: 2, weeks: [17] },
+      { id: 32, name: "智能建造与运维导论", teacher: "未标注", location: "教学楼②301", day: 1, start: 3, end: 4, weeks: [17] },
+      { id: 33, name: "智能建造与运维导论", teacher: "未标注", location: "教学楼②301", day: 1, start: 6, end: 7, weeks: [14, 15, 17] },
+      { id: 34, name: "智能建造与运维导论", teacher: "未标注", location: "教学楼②301", day: 1, start: 8, end: 9, weeks: [14, 15, 17] }
+    ];
+
+    const DAYS = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
+    const TOTAL_WEEKS = 17;
+    const PERIODS = 12;
+
+    const PERIOD_TIMES = [
+      "8:40~9:20", "9:30~10:10", "10:30~11:10", "11:20~12:00", "", "13:30~14:10", 
+      "14:20~15:00", "15:20~16:00", "16:10~16:50", "19:00~19:40", "19:50~20:30", "20:40~21:20"
+    ];
+
+    const COURSE_COLORS = {
+      "人工智能技术": "#93b5cf", "人工智能概论": "#93b5cf", "岭南建筑文化": "#e5e7eb", 
+      "文献检索及论文写作I": "#fbecde", "职业生涯规划": "#fbecde", "研究生心理健康教育": "#fbecde", 
+      "绿色建筑及建筑节能技术": "#cad6b0", "工程地质与水文地质学": "#cea3ae", 
+      "工程热力学理论及应用": "#946d77", "智能检测与绿色运维": "#e5e7eb", 
+      "深度学习与智慧感知": "#e5e7eb", "智能建造与运维导论": "#e5e7eb"
+    };
+
+    const getDisplayDate = (week, dayIndex) => {
+      const baseDate = new Date(2026, 2, 9);
+      baseDate.setDate(baseDate.getDate() + (week - 1) * 7 + dayIndex);
+      const m = baseDate.getMonth() + 1;
+      const d = baseDate.getDate();
+      return `${m.toString().padStart(2, '0')}/${d.toString().padStart(2, '0')}`;
+    };
+
+    const getRow = (p) => p <= 9 ? p + 1 : p + 2;
+
+    function App() {
+      const [currentWeek, setCurrentWeek] = useState(2);
+      
+      // 使用 LocalStorage 管理本地进度记忆
+      const [completedIds, setCompletedIds] = useState(() => {
+        try {
+          const saved = localStorage.getItem('schedule_2026_spring_completed');
+          return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+          return [];
+        }
+      });
+
+      const handlePrevWeek = () => setCurrentWeek(prev => Math.max(1, prev - 1));
+      const handleNextWeek = () => setCurrentWeek(prev => Math.min(TOTAL_WEEKS, prev + 1));
+
+      const toggleClassCompletion = (ids) => {
+        setCompletedIds(prev => {
+          const allCompleted = ids.every(id => prev.includes(id));
+          let newIds;
+          if (allCompleted) {
+            newIds = prev.filter(itemId => !ids.includes(itemId));
+          } else {
+            newIds = [...new Set([...prev, ...ids])];
+          }
+          
+          // 持久化存储至浏览器
+          localStorage.setItem('schedule_2026_spring_completed', JSON.stringify(newIds));
+          return newIds;
+        });
+      };
+
+      const activeClasses = useMemo(() => {
+        const filtered = scheduleData.filter(cls => cls.weeks.includes(currentWeek));
+        filtered.sort((a, b) => {
+          if (a.day !== b.day) return a.day - b.day;
+          return Number(a.start) - Number(b.start);
+        });
+
+        const merged = [];
+        filtered.forEach(cls => {
+          const mergeTarget = merged.find(m =>
+            m.day === cls.day && m.name === cls.name && Number(m.end) === Number(cls.start) - 1
+          );
+          if (mergeTarget) {
+            mergeTarget.end = cls.end;
+            mergeTarget.ids.push(cls.id);
+          } else {
+            merged.push({ ...cls, ids: [cls.id] });
+          }
+        });
+        return merged;
+      }, [currentWeek]);
+
+      const formatWeeks = (weeks) => {
+        if (weeks.length <= 3) return `第${weeks.join(',')}周`;
+        const min = Math.min(...weeks);
+        const max = Math.max(...weeks);
+        return `第${min}-${max}周`;
+      };
+
+      return (
+        <div className="min-h-screen bg-neutral-50 p-4 md:p-8 font-sans text-neutral-800 flex flex-col items-center relative">
+          
+          <div className="w-full max-w-[1200px] bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-neutral-100 rounded-lg text-neutral-600">
+                  <IconCalendar />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-neutral-800">2026年春季课程表</h1>
+                  <p className="text-sm text-neutral-500 mt-1">单周视图 · 离线本地保存模式</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="flex items-center gap-2 bg-neutral-100 p-1.5 rounded-lg">
+                  <button 
+                    onClick={handlePrevWeek} 
+                    disabled={currentWeek === 1}
+                    className="p-1.5 bg-white rounded-md shadow-sm hover:bg-neutral-50 disabled:opacity-50 transition-all"
+                  >
+                    <IconChevronLeft />
+                  </button>
+                  
+                  <div className="relative flex items-center justify-center w-24">
+                    <select 
+                      value={currentWeek} 
+                      onChange={(e) => setCurrentWeek(Number(e.target.value))}
+                      className="appearance-none bg-transparent font-bold text-sm tabular-nums text-neutral-800 cursor-pointer pl-2 pr-6 py-1 outline-none w-full text-center"
+                      style={{ textAlignLast: 'center' }}
+                    >
+                      {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map(w => (
+                        <option key={w} value={w}>第 {w} 周</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-1 pointer-events-none text-neutral-400">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleNextWeek} 
+                    disabled={currentWeek === TOTAL_WEEKS}
+                    className="p-1.5 bg-white rounded-md shadow-sm hover:bg-neutral-50 disabled:opacity-50 transition-all"
+                  >
+                    <IconChevronRight />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-w-[1200px] overflow-x-auto bg-white rounded-2xl shadow-sm border border-neutral-200">
+            <div className="min-w-[900px] p-4 mx-auto">
+              
+              <div 
+                className="grid gap-1"
+                style={{ 
+                  gridTemplateColumns: '40px 75px repeat(7, 1fr)',
+                  gridTemplateRows: `50px repeat(14, minmax(65px, auto))` 
+                }}
+              >
+                {DAYS.map((day, index) => (
+                  <div 
+                    key={day} 
+                    className="flex flex-col items-center justify-center bg-neutral-50 rounded-lg border border-neutral-100 py-1"
+                    style={{ gridColumn: index + 3, gridRow: 1 }}
+                  >
+                    <span className="font-bold text-neutral-600 text-sm">{day}</span>
+                    <span className="text-[10px] text-neutral-400 font-medium tracking-wide mt-0.5">
+                      {getDisplayDate(currentWeek, index)}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="bg-neutral-50 rounded-lg border border-neutral-100 flex items-center justify-center font-medium text-neutral-500 writing-vertical-lr p-2" 
+                     style={{ gridColumn: 1, gridRow: '2 / span 4' }}>上午</div>
+                <div className="bg-neutral-50 rounded-lg border border-neutral-100 flex items-center justify-center font-medium text-neutral-500 writing-vertical-lr p-2" 
+                     style={{ gridColumn: 1, gridRow: '6 / span 5' }}>下午</div>
+                <div className="bg-neutral-50 rounded-lg border border-neutral-100 flex items-center justify-center font-medium text-neutral-500 writing-vertical-lr p-2" 
+                     style={{ gridColumn: 1, gridRow: '11 / span 5' }}>晚上</div>
+
+                {Array.from({ length: PERIODS }).map((_, i) => {
+                  const periodNum = i + 1;
+                  const row = getRow(periodNum);
+                  if (periodNum === 5) return null;
+
+                  return (
+                    <div 
+                      key={`period-${periodNum}`} 
+                      className="flex flex-col items-center justify-center text-neutral-400 border-r border-b border-neutral-50/50 p-1"
+                      style={{ gridColumn: 2, gridRow: row }}
+                    >
+                      <span className="text-sm font-bold text-neutral-500">{periodNum}</span>
+                      {PERIOD_TIMES[i] && (
+                        <span className="text-[10px] font-medium tracking-tighter mt-0.5 whitespace-nowrap opacity-80">
+                          {PERIOD_TIMES[i]}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {Array.from({ length: PERIODS }).map((_, r) => {
+                   const periodNum = r + 1;
+                   const row = getRow(periodNum);
+                   if (periodNum === 5) return null;
+
+                   return Array.from({ length: 7 }).map((_, c) => ( 
+                     <div 
+                      key={`bg-${row}-${c}`}
+                      className="border-b border-r border-neutral-100/50"
+                      style={{ gridColumn: c + 3, gridRow: row }}
+                     />
+                   ));
+                })}
+
+                <div 
+                  className="flex items-center justify-center bg-neutral-100/50 rounded-xl border border-dashed border-neutral-300 text-neutral-700 font-bold text-sm tracking-widest pointer-events-none"
+                  style={{ gridColumn: '2 / span 8', gridRow: '6', zIndex: 0 }} 
+                >
+                  午饭时间 🥑 🥚 🦐 🥒
+                </div>
+
+                <div 
+                  className="flex items-center justify-center bg-neutral-100/50 rounded-xl border border-dashed border-neutral-300 text-neutral-700 font-bold text-sm tracking-widest pointer-events-none"
+                  style={{ gridColumn: '2 / span 8', gridRow: '11', zIndex: 0 }} 
+                >
+                  晚饭时间 🥗 🍗 🥦 🍅
+                </div>
+
+                <div 
+                  className="flex items-center justify-center bg-indigo-50/60 rounded-xl border border-dashed border-indigo-200 text-neutral-700 font-bold text-sm tracking-widest pointer-events-none mt-1"
+                  style={{ gridColumn: '2 / span 8', gridRow: '15', zIndex: 0, minHeight: '50px' }} 
+                >
+                  休息娱乐时间 🎮 🎵 📖 🛀 🌙
+                </div>
+
+                {activeClasses.map((cls) => {
+                  const isCompleted = cls.ids.every(id => completedIds.includes(id));
+                  const bgColor = COURSE_COLORS[cls.name] || '#e5e7eb';
+                  
+                  const isDimmedCourse = ["深度学习与智慧感知", "智能建造与运维导论", "智能检测与绿色运维"].includes(cls.name);
+                  const opacityHex = isDimmedCourse ? '80' : 'E6';
+                  
+                  return (
+                    <div 
+                      key={cls.ids.join('-')}
+                      onClick={() => toggleClassCompletion(cls.ids)}
+                      className={`p-2 rounded-xl border-l-4 shadow-sm flex flex-col transition-all duration-300 relative cursor-pointer hover:scale-105 hover:shadow-lg hover:z-50
+                        ${isCompleted ? 'opacity-40 grayscale hover:opacity-60' : ''}`}
+                      style={{ 
+                        gridColumn: cls.day + 2, 
+                        gridRow: `${getRow(cls.start)} / span ${getRow(cls.end) - getRow(cls.start) + 1}`,
+                        backgroundColor: isCompleted ? '#e5e7eb' : bgColor + opacityHex, 
+                        borderColor: isCompleted ? '#9ca3af' : bgColor.replace(/[^#0-9a-fA-F]/g, ''),
+                        zIndex: 10
+                      }}
+                    >
+                      <div className={`flex flex-col h-full w-full gap-1 ${isDimmedCourse && !isCompleted ? 'opacity-50' : ''}`}>
+                        <div className="flex justify-between items-start gap-1">
+                          <h3 className={`font-bold text-xs leading-tight ${isCompleted ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>{cls.name}</h3>
+                          <span className="text-[10px] font-bold bg-white/60 px-1 py-0.5 rounded text-neutral-700 whitespace-nowrap shrink-0">
+                            {formatWeeks(cls.weeks)}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-auto flex flex-col gap-0.5 text-[11px] text-neutral-800 font-medium">
+                          <div className="flex items-center gap-1">
+                            <IconUser className="shrink-0 opacity-70" />
+                            <span className="truncate">{cls.teacher}</span>
+                          </div>
+                          <div className="flex items-start gap-1">
+                            <IconMapPin className="shrink-0 mt-0.5 opacity-70" />
+                            <span className="line-clamp-2 leading-tight">{cls.location}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
